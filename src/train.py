@@ -8,7 +8,7 @@ def src_mask(sz):
     mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
     return mask
 
-def train(model, train_loader, criterion, optimizer, num_epoch, w, test_loader, scheduler):
+def train(model, train_loader, criterion, optimizer, num_epoch, w, test_loader, scheduler, model_path):
     model.train()
     mask = src_mask(193)
     perf = torch.inf
@@ -38,7 +38,7 @@ def train(model, train_loader, criterion, optimizer, num_epoch, w, test_loader, 
         scheduler.step(perf_tmp)
         if perf_tmp < perf:
             perf = perf_tmp
-            torch.save(model.state_dict(), "model.pt")
+            torch.save(model.state_dict(), model_path)
     return model
 
 def test(model, test_loader, criterion = None, verbose = False):
@@ -111,7 +111,7 @@ if __name__=="__main__":
         n_layers=n_layers,
         drop_prob=drop_prob,
         device=device).to(device)
-    torch.save(model.state_dict(), model_path)
+    #torch.save(model.state_dict(), model_path)
         
     criterion = torch.nn.CrossEntropyLoss(ignore_index=md.word_count-1)
     
@@ -139,6 +139,6 @@ if __name__=="__main__":
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader =torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
     test(model, test_loader, verbose=True)
-    model = train(model, train_loader, criterion, optimizer, num_epochs, w, test_loader, scheduler)
+    model = train(model, train_loader, criterion, optimizer, num_epochs, w, test_loader, scheduler, model_path)
     test(model, test_loader, verbose=True)
     
