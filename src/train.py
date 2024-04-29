@@ -1,6 +1,7 @@
 import torch
 from torch.nn import functional as F
 from transformer_model.model.transformer import Transformer
+import sys, json
 
 def src_mask(sz):
     mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
@@ -63,16 +64,37 @@ def test(model, test_loader, criterion = None, verbose = False):
     
 if __name__=="__main__":
 
-    # Sample hyperparameters
-    batch_size = 64
-    num_epochs = 20
-    learning_rate = 1e-3
+    if len(sys.argv) > 1:
+        conf_path = sys.argv[1]
+    else:
+        conf_path = "default_config.json"
+    with open(conf_path) as f:
+        config = json.load(f)
+        
     
+    # Sample hyperparameters
+    batch_size =config["batch_size"]
+    num_epochs = config["num_epoch"]
+    learning_rate = config["learning_rate"]
+    dataset_path = config["dataset_path"]
+    cache_path = config["cache_path"]
+    d_model = config["d_model"]
+    max_len =  config["max_len"]
+    ffn_hidden =  config["ffn_hidden"]
+    n_head =  config["n_head"]
+    n_layers =  config["n_layers"]
+    drop_prob = config["drop_prob"]
+    model_path = config["model_path"]
+
+    init_lr = config["init_lr"]
+    factor = config["factor"]
+    patience = config["patience"]
+    warmup = config["warmup"]
     # Create model, loss function and optimizer
     
     
     from dataset import MahjongDataset
-    md = MahjongDataset("tmp2", cache_dir="tmp2")
+    md = MahjongDataset(dataset_path, cache_dir=cache_path)
     w = md.words
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -80,23 +102,19 @@ if __name__=="__main__":
         src_pad_idx=md.word_count-1,
         trg_pad_idx=md.word_count-1,
         #trg_sos_idx=md.word_count + 1,
-        d_model=512,
+        d_model=d_model,
         enc_voc_size=md.word_count,
         dec_voc_size=md.word_count,
-        max_len=197,
-        ffn_hidden=512,
-        n_head=8,
-        n_layers=6,
-        drop_prob=0.1,
+        max_len=max_len,
+        ffn_hidden=ffn_hidden,
+        n_head=n_head,
+        n_layers=n_layers,
+        drop_prob=drop_prob,
         device=device).to(device)
-    torch.save(model.state_dict(), "model.pt")
+    torch.save(model.state_dict(), model_path)
         
     criterion = torch.nn.CrossEntropyLoss(ignore_index=md.word_count-1)
     
-    init_lr = 1e-5
-    factor = 0.9
-    patience = 10
-    warmup = 100
     optimizer = torch.optim.Adam(model.parameters(), lr=init_lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
                                                      verbose=True,
