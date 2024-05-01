@@ -63,14 +63,16 @@ def test(model, test_loader, criterion = None, verbose = False):
     return full_loss / len(test_loader)
     
 if __name__=="__main__":
+    import argparse
+    argParser = argparse.ArgumentParser()
+    argParser.add_argument("-c", "--config", help="Configuration file. JSON format", default="default_config.json")
 
-    if len(sys.argv) > 1:
-        conf_path = sys.argv[1]
-    else:
-        conf_path = "default_config.json"
+    args = argParser.parse_args()
+    conf_path = args.config
+    
     with open(conf_path) as f:
         config = json.load(f)
-        
+    
     
     # Sample hyperparameters
     batch_size =config["batch_size"]
