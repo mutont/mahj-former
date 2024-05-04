@@ -341,8 +341,8 @@ def tenhou_to_custom(game):
     tmp_games.append(tmp)
     translated_games = []
     for game_no, tmp_game in enumerate(tmp_games):
-    #for game_no, tmp_game in enumerate([tmp_games[4]]):
-        #game_no = 4
+    #for game_no, tmp_game in enumerate([tmp_games[3]]):
+        #game_no = 3
         if len(tmp_game) <= 4:
             continue
         if game_no == len(tmp_games)-1:
@@ -472,6 +472,7 @@ def tenhou_to_custom(game):
 
                 rg2 = readable(tmp_games[game_no+1][0])
                 scores = [x-y for x,y in zip(rg2["scores"],rg["scores"])]
+                #print(scores)
                 no_ron_found = True
                 for n, i in tenpais.items():
                     
@@ -497,8 +498,10 @@ def tenhou_to_custom(game):
                         ### IF NO RON, WE CHECK FOR TSUMO. IF THERE ARE STILL TILES LEFT IN THE WALL, IT MEANS THAT THERE WAS A TSUMO (OR RARELY A ROBBED KAN) . DATASET DOESNT TELL US WHAT TILE WAS USED TO WIN SO WE JUST TAKE A RANDOM TILE FROM THE WAITS. WE ARE LAZY FOR NOW AND WE PICK ONE OF THE WAIT TILES. THIS MEANS THAT PLAYER COULD WIN BY IMPOSSIBLE 5TH TILE. IN FUTURE WE SHOULD KEEP TRACK OF ALL THE TILES AND MAKE SURE THIS DOESNT HAPPEN.
 
                         rg2 = readable(tmp_games[game_no+1][0])
-                        if rg["wall"]:
-                            next_player = (int(rg["player"]) + 1) % 4
+                        
+                        
+                        next_player = (int(rg["player"]) + 1) % 4
+                        if rg["wall"] and any(scores):
                             score = rg2["scores"][next_player]-rg["scores"][next_player]
                             winner = np.argmax(scores)
                             
@@ -528,6 +531,26 @@ def tenhou_to_custom(game):
                             new_game.add("P"+str(next_player)+"_TSUMO_"+tenpais[str(next_player)]["wait"][0])
                         else:
                             ### HAITEI TSUMO IS ALSO POSSIBLE HERE BUT DATASET SIMPLY DOESNT INFORM ABOUT THIS. ITS JUST A DRAW.
+                            if not any(scores): # SPECIAL DRAWS. EITHER FIVE KANS OR FOUR RIICHIS
+                                if sum([int(rg[str(x) + "_riichi"]) for x in range(4)]) == 3:
+                                    new_game.add("P"+str(rg["player"])+"_RIICHI_"+disc)
+                                else:
+                                    five_kans = []
+                                    next_player_pons = None
+                                    for i in range(4):
+                                        hand = hands[i] + (str_to_lst(rg[str(i) + "_calls"]))
+                                        five_kans += (list(set([x for x in hand if hand.count(x) == 4])))
+                                        tmp = list(set([x for x in hand if hand.count(x) == 3]))
+                                        if i == next_player:
+                                            next_player_pons = tmp
+                                        if disc in tmp:
+                                            five_kans.append(disc)
+                                            last_kan_caller = i
+                                    if len(five_kans) == 5:
+                                        new_game.add("P"+str(last_kan_caller)+"_KAN_"+disc)
+                                    else:
+                                        new_game.add(next_player_pons[0], turn=next_player)
+                                        new_game.add("P"+str(next_player)+"_KAN_"+next_player_pons[0])
                             new_game.add("DRAW")
                         
         #print(new_game)
@@ -541,4 +564,4 @@ def tenhou_to_custom(game):
     return result
 
 if __name__ == "__main__":
-    read_tenhou_game("discard_datasets/2009/2009121122gm-00a9-0000-74a656c8.npz")
+    read_tenhou_game("discard_datasets/2010/2010012401gm-00a9-0000-8d89bdb8.npz")
