@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import scipy
 from collections import Counter
 import itertools
@@ -245,7 +246,9 @@ class Game:
     ### CLASS FOR MAKING ADDING MOVES TO MULTIPLE PLAYERS EASIER
     def __init__(self):
         self.game = [[],[],[],[]]
-
+        self.remaining_tiles = [x for _ in range(4) for x in TILES]
+        random.shuffle(self.remaining_tiles)
+        
     def add_winds(self, rnd, seat):
         
         for i in range(len(self.game)):
@@ -253,6 +256,9 @@ class Game:
             self.game[i].append( "WIND_" + str((seat + i) % 4) )
 
     def add(self, x, turn=None, ndx=None):
+        if len(x) == 2 or "DORA" in x:
+            y = x.split("DORA_")[-1]
+            self.remaining_tiles.remove(y)
         for i in range(len(self.game)):
 
             if turn in [0,1,2,3] and i != turn:
@@ -280,43 +286,43 @@ class Game:
     def list(self):
         return self.game
 
-def process_calls_and_discs(new_game, hands, calls, discs, turn, doras, riichi=False, call_tile=None, auto_discard_was_called_from=None):
-    doras_tmp = []
-    call_sets = set(calls)
-    if len(call_sets) == len(calls) == 3 and not len(doras):
-        calls = [calls]
-    else:
-        calls = [[y for y in calls if y==x] for x in call_sets]
-    for n, call in enumerate(calls):
-        if len(set(call)) == 1:
-            
-            if len(call) == 3:
-                new_game.add("P"+str(turn)+"_PON_"+call[0])
-                hands[int(turn)] = list_difference(hands[int(turn)], call)
-            elif len(call) == 4 or len(call) == 1:
-                new_game.add("P"+str(turn)+"_KAN_"+call[0])
-                #new_dora = list_difference(str_to_lst(rg["doras"]), str_to_lst(rg2["doras"]))[0]
-                new_game.add("DORA_" + doras[0])
-                del doras[0]
-                hands[int(turn)] = list_difference(hands[int(turn)], call)
-            if auto_discard_was_called_from is not None:
-                
-                new_game.add(call_tile[0], turn=auto_discard_was_called_from, ndx=-1)
-                new_game.add("P"+str(auto_discard_was_called_from)+"_DISCARD_"+call_tile[0], ndx=-1)
-        elif len(set(call)) == 3:
-            new_game.add("P"+str(turn)+"_CHI_"+lst_to_str(call))
-            if auto_discard_was_called_from is not None:
-                new_game.add(call_tile[0],  turn=auto_discard_was_called_from, ndx=-1)
-                new_game.add("P"+str(auto_discard_was_called_from)+"_DISCARD_"+ call_tile[0], ndx=-1)
-            hands[int(turn)] = list_difference(hands[int(turn)], call)
-
-    if len(discs) == 1:
-        if riichi:
-            new_game.add("P"+str(turn)+"_RIICHI_"+discs[0])
-            
+    def process_calls_and_discs(self, hands, calls, discs, turn, doras, riichi=False, call_tile=None, auto_discard_was_called_from=None):
+        doras_tmp = []
+        call_sets = set(calls)
+        if len(call_sets) == len(calls) == 3 and not len(doras):
+            calls = [calls]
         else:
-            new_game.add("P"+str(turn)+"_DISCARD_"+discs[0])
-
+            calls = [[y for y in calls if y==x] for x in call_sets]
+        for n, call in enumerate(calls):
+            if len(set(call)) == 1:
+                
+                if len(call) == 3:
+                    self.add("P"+str(turn)+"_PON_"+call[0])
+                    hands[int(turn)] = list_difference(hands[int(turn)], call)
+                elif len(call) == 4 or len(call) == 1:
+                    self.add("P"+str(turn)+"_KAN_"+call[0])
+                    #new_dora = list_difference(str_to_lst(rg["doras"]), str_to_lst(rg2["doras"]))[0]
+                    self.add("DORA_" + doras[0])
+                    del doras[0]
+                    hands[int(turn)] = list_difference(hands[int(turn)], call)
+                if auto_discard_was_called_from is not None:
+                    
+                    self.add(call_tile[0], turn=auto_discard_was_called_from, ndx=-1)
+                    self.add("P"+str(auto_discard_was_called_from)+"_DISCARD_"+call_tile[0], ndx=-1)
+            elif len(set(call)) == 3:
+                self.add("P"+str(turn)+"_CHI_"+lst_to_str(call))
+                if auto_discard_was_called_from is not None:
+                    self.add(call_tile[0],  turn=auto_discard_was_called_from, ndx=-1)
+                    self.add("P"+str(auto_discard_was_called_from)+"_DISCARD_"+ call_tile[0], ndx=-1)
+                hands[int(turn)] = list_difference(hands[int(turn)], call)
+    
+        if len(discs) == 1:
+            if riichi:
+                self.add("P"+str(turn)+"_RIICHI_"+discs[0])
+                
+            else:
+                self.add("P"+str(turn)+"_DISCARD_"+discs[0])
+    
     
 def tenhou_to_custom(game):
     words, tiles = construct_words()
@@ -398,7 +404,8 @@ def tenhou_to_custom(game):
                         doras = doras[1:]
                     tmp = hands[int(turn)]
                     
-                    process_calls_and_discs(new_game, hands, calls, discs, turn, doras)
+                    #process_calls_and_discs(new_game, hands, calls, discs, turn, doras)
+                    new_game.process_calls_and_discs( hands, calls, discs, turn, doras)
                     hands[int(turn)] = tmp
                     
             
@@ -455,7 +462,8 @@ def tenhou_to_custom(game):
                             auto_discard_was_called_from = int(turn)
                             continue
                         elif not len(discs) and len(calls):
-                            process_calls_and_discs(new_game, hands, calls, discs, turn, doras, riichi=rg[turn + "_riichi"] != rg2[turn + "_riichi"]) 
+                            #process_calls_and_discs(new_game, hands, calls, discs, turn, doras, riichi=rg[turn + "_riichi"] != rg2[turn + "_riichi"])
+                            new_game.process_calls_and_discs(hands, calls, discs, turn, doras, riichi=rg[turn + "_riichi"] != rg2[turn + "_riichi"]) 
                             auto_discard_was_called_from = int(turn)
                             new_game.add(calls[0], turn=int(turn), ndx=-2)
                             continue
@@ -464,14 +472,18 @@ def tenhou_to_custom(game):
                     if auto_discard_was_called_from is not None and len(calls): #SOMEBODY CALLED RIICHI'D DISCARD
                         call_tile = list_difference( list_difference(hands[int(rg2["player"])],str_to_lst( rg2[turn + "_hand"] )), calls)
                         
-                    process_calls_and_discs(new_game, hands, calls, discs, turn, doras, riichi=rg[turn + "_riichi"] != rg2[turn + "_riichi"], call_tile=call_tile, auto_discard_was_called_from=auto_discard_was_called_from) 
+                    #process_calls_and_discs(new_game, hands, calls, discs, turn, doras, riichi=rg[turn + "_riichi"] != rg2[turn + "_riichi"], call_tile=call_tile, auto_discard_was_called_from=auto_discard_was_called_from)
+                    new_game.process_calls_and_discs( hands, calls, discs, turn, doras, riichi=rg[turn + "_riichi"] != rg2[turn + "_riichi"], call_tile=call_tile, auto_discard_was_called_from=auto_discard_was_called_from) 
                 
             else:
                 ### END OF THE GAME. TENHOU DATASET DOESN'T ACTUALLY TELL HOW THE GAME ENDS. FIRST WE CHECK IF THE LAST DISCARD BELONGS TO ANY OF THE WAITS MENTIONED BEFOREHAND WHICH WOULD COUNT AS RON
                 new_game.add("P"+str(rg["player"])+"_DISCARD_"+disc) 
 
                 rg2 = readable(tmp_games[game_no+1][0])
+                #print(rg2)
                 scores = [x-y for x,y in zip(rg2["scores"],rg["scores"])]
+                for i in range(4):
+                    scores[i] += int(rg[str(i)+"_riichi"])
                 #print(scores)
                 no_ron_found = True
                 for n, i in tenpais.items():
@@ -484,25 +496,39 @@ def tenhou_to_custom(game):
                     ### CHECK FOR ROBBED KAN. I LOVE EDGE CASES
                     no_robbed_kan = True
                     if rg["wall"] and len([x for x in scores if x > 0]) == 1 and len([x for x in scores if x < 0]) == 1:
-                        for i in range(4):
-                            tmp = str_to_lst(rg[str(i)+"_calls"])
-                            tmp = set([x for x in tmp if tmp.count(x) == 3])
-                            robbed_kans = [(y,x) for x in tmp for y, z in tenpais.items() if x in z["wait"]]
-                            if len(robbed_kans):
+                        winner = np.argmax(scores)
+                        loser = np.argmin(scores)
+                        #for i in range(4):
+                        
+                        #tmp = hands[i] + (str_to_lst(rg[str(i) + "_calls"]))
+                        tmp = str_to_lst(rg[str(loser)+"_calls"])
+                        tmp = set([x for x in tmp if tmp.count(x) == 3])
+                        #robbed_kans = [(y,x) for x in tmp for y, z in tenpais.items() if x in z["wait"] ]
+                        robbed_kans = [x for x in tmp if x in tenpais[str(winner)]["wait"]]
+                        if len(robbed_kans):
+                            for robbed_kan in robbed_kans:
+                                if robbed_kan in hands[loser]:
+                                    new_game.add(new_game.remaining_tiles[0], turn=loser)
+                                elif robbed_kan in new_game.remaining_tiles:
+                                    new_game.add(str(robbed_kan), turn=loser)
+                                else:
+                                    continue
                                 no_robbed_kan = False
-                                new_game.add(str(robbed_kans[0][1]), turn=i)
-                                new_game.add("P"+str(i)+"_KAN_"+str(robbed_kans[0][1]))
-                                new_game.add("P"+str(robbed_kans[0][0])+"_RON_"+str(robbed_kans[0][1]))
+                                #if robbed_kans[0][1] in 
+                                
+                                new_game.add("P"+str(loser)+"_KAN_"+str(robbed_kan))
+                                new_game.add("DORA_"+new_game.remaining_tiles[0])
+                                new_game.add("P"+str(winner)+"_RON_"+str(robbed_kan))
                                 break
                     if no_robbed_kan:
                         ### IF NO RON, WE CHECK FOR TSUMO. IF THERE ARE STILL TILES LEFT IN THE WALL, IT MEANS THAT THERE WAS A TSUMO (OR RARELY A ROBBED KAN) . DATASET DOESNT TELL US WHAT TILE WAS USED TO WIN SO WE JUST TAKE A RANDOM TILE FROM THE WAITS. WE ARE LAZY FOR NOW AND WE PICK ONE OF THE WAIT TILES. THIS MEANS THAT PLAYER COULD WIN BY IMPOSSIBLE 5TH TILE. IN FUTURE WE SHOULD KEEP TRACK OF ALL THE TILES AND MAKE SURE THIS DOESNT HAPPEN.
 
-                        rg2 = readable(tmp_games[game_no+1][0])
+                        #rg2 = readable(tmp_games[game_no+1][0])
                         
                         
                         next_player = (int(rg["player"]) + 1) % 4
                         if rg["wall"] and any(scores):
-                            score = rg2["scores"][next_player]-rg["scores"][next_player]
+                            score = scores[next_player]#rg2["scores"][next_player]-rg["scores"][next_player]
                             winner = np.argmax(scores)
                             
                             if next_player != winner: ### SOME PLAYER CALLED A KAN AND TSUMOD
@@ -510,6 +536,7 @@ def tenhou_to_custom(game):
                                 if disc in tmp:
                                     new_game.add("P"+str(rg["player"])+"_DISCARD_"+disc) 
                                     new_game.add("P"+str(winner)+"_KAN_"+disc)
+                                    new_game.add("DORA_"+new_game.remaining_tiles[0])
                                     next_player = winner
                             if not len(tenpais[str(winner)]["wait"]):
 
@@ -524,11 +551,14 @@ def tenhou_to_custom(game):
                                     for n,i in enumerate(tmp):
                                         new_game.add(new_wait[0], turn=winner)
                                         new_game.add("P"+str(winner)+"_KAN_"+i)
+                                        new_game.add("DORA_"+new_game.tiles_remaining[0])
                                         del new_wait[0]
                                     tenpais[str(next_player)]["wait"] = new_wait
-                                
-                            new_game.add(tenpais[str(next_player)]["wait"][0], turn=next_player)
-                            new_game.add("P"+str(next_player)+"_TSUMO_"+tenpais[str(next_player)]["wait"][0])
+                            wait = [x for x in tenpais[str(next_player)]["wait"] if x in new_game.remaining_tiles]
+                            #new_game.add(tenpais[str(next_player)]["wait"][0], turn=next_player)
+                            #new_game.add("P"+str(next_player)+"_TSUMO_"+tenpais[str(next_player)]["wait"][0])
+                            new_game.add(wait[0], turn=next_player)
+                            new_game.add("P"+str(next_player)+"_TSUMO_"+wait[0])
                         else:
                             ### HAITEI TSUMO IS ALSO POSSIBLE HERE BUT DATASET SIMPLY DOESNT INFORM ABOUT THIS. ITS JUST A DRAW.
                             if not any(scores): # SPECIAL DRAWS. EITHER FIVE KANS OR FOUR RIICHIS
@@ -551,6 +581,7 @@ def tenhou_to_custom(game):
                                     else:
                                         new_game.add(next_player_pons[0], turn=next_player)
                                         new_game.add("P"+str(next_player)+"_KAN_"+next_player_pons[0])
+                                    new_game.add("DORA_"+new_game.tiles_remaining[0])
                             new_game.add("DRAW")
                         
         #print(new_game)
@@ -564,4 +595,4 @@ def tenhou_to_custom(game):
     return result
 
 if __name__ == "__main__":
-    read_tenhou_game("discard_datasets/2010/2010012401gm-00a9-0000-8d89bdb8.npz")
+    read_tenhou_game("discard_datasets/2010/2010041819gm-00a9-0000-7f649d67.npz")
