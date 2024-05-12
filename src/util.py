@@ -257,7 +257,19 @@ class Game:
 
     def add(self, x, turn=None, ndx=None):
         if len(x) == 2 or "DORA" in x:
-            y = x.split("DORA_")[-1]
+            if "DORA_" in x:
+                y = x.split("DORA_")[-1] # THE GIVEN VALUE IS ACTUALLY THE INDICATOR
+
+                if y[0] == "d":
+                    tmp = int(y[1]) + 1 if int(y[1]) + 1 < 3  else 1
+                elif y[0] == "w":
+                    tmp = int(y[1]) + 1 if int(y[1]) + 1 < 5 else 1    
+                else:
+                    tmp = int(y[1]) + 1 if int(y[1]) + 1 < 10 else 1
+                x = "DORA_" + y[0] + str(tmp)
+                    
+            else:
+                y = x
             self.remaining_tiles.remove(y)
         for i in range(len(self.game)):
 
@@ -370,7 +382,7 @@ def tenhou_to_custom(game):
         for i in tmp_game:
             ### THIS RUN WE USE TO INITIALIZE HANDS
             rg = readable(i)
-            if len(hands) < 4 and not rg["player"] in hands:
+            if len(hands) < 4 and not int(rg["player"]) in hands:
                 hands[int(rg["player"])]= str_to_lst(rg[rg["player"]+"_hand"])
         for n, i in enumerate(tmp_game):
             ### FINALLY WE GO THROUGH ALL THE HANDS IN THE ROUND
@@ -431,7 +443,8 @@ def tenhou_to_custom(game):
                         draw = draw[0]
                     
                         ### DRAW OF THE CURRENT PLAYER
-                        new_game.add(draw, turn=int(rg["player"]))
+                        if not draw in str_to_lst(rg[rg["player"] + "_calls" ]):
+                            new_game.add(draw, turn=int(rg["player"]))
                 first_tile[int(rg["player"])] = False
                 hands[int(rg["player"])] = hand
                 call_tile = None
@@ -557,12 +570,23 @@ def tenhou_to_custom(game):
                             wait = [x for x in tenpais[str(next_player)]["wait"] if x in new_game.remaining_tiles]
                             #new_game.add(tenpais[str(next_player)]["wait"][0], turn=next_player)
                             #new_game.add("P"+str(next_player)+"_TSUMO_"+tenpais[str(next_player)]["wait"][0])
-                            new_game.add(wait[0], turn=next_player)
-                            new_game.add("P"+str(next_player)+"_TSUMO_"+wait[0])
+                            if not len(wait) and not rg["wall"] - sum([int(rg[str(x)+"_riichi"]) for x in range(4)]):
+                                for i in range(3):
+                                    if rg[str((next_player+i)%4)+"_riichi"]:
+                                        disc_ = new_game.remaining_tiles[0]
+                                        new_game.add(disc_, turn=next_player+i)
+                                        new_game.add("P"+str(next_player+i)+"_DISCARD_"+disc_)
+                                        new_game.add("DRAW")
+                            else:
+                                new_game.add(wait[0], turn=next_player)
+                                new_game.add("P"+str(next_player)+"_TSUMO_"+wait[0])
                         else:
                             ### HAITEI TSUMO IS ALSO POSSIBLE HERE BUT DATASET SIMPLY DOESNT INFORM ABOUT THIS. ITS JUST A DRAW.
+                            in_tenpais = [bool(len(x["wait"])) for x in tenpais.values()] 
                             if not any(scores): # SPECIAL DRAWS. EITHER FIVE KANS OR FOUR RIICHIS
-                                if sum([int(rg[str(x) + "_riichi"]) for x in range(4)]) == 3:
+                                if all(in_tenpais) or any(in_tenpais):
+                                    pass
+                                elif sum([int(rg[str(x) + "_riichi"]) for x in range(4)]) == 3:
                                     new_game.add("P"+str(rg["player"])+"_RIICHI_"+disc)
                                 else:
                                     five_kans = []
